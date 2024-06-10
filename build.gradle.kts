@@ -41,6 +41,16 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Exe)
             packageName = "MoeTalkLocal"
             packageVersion = "1.0.0"
+
+            windows {
+                console = true
+
+                shortcut = true
+                menu = true
+                menuGroup = "MoeTalk Desktop"
+
+                upgradeUuid = "A4C80A54-3E5A-440E-B27E-450CED6E7E01"
+            }
         }
 
         buildTypes.release {
