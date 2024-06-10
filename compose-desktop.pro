@@ -1,0 +1,3 @@
+-dontwarn org.apache.**
+-dontwarn okhttp3.**
+-dontwarn io.netty.**
