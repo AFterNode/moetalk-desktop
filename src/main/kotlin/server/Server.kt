@@ -21,10 +21,11 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.callloging.*
 import io.ktor.server.routing.*
+import logCtx
 import org.slf4j.LoggerFactory
 
 object Server {
-    val logger = LoggerFactory.getLogger("Server")
+    val logger = logCtx.getLogger("Server")
 
     var port: Int = 8080
 
@@ -45,7 +46,9 @@ object Server {
         try {
             logger.info("Starting server on $port")
             engine = embeddedServer(Netty, port = port) {
-                install(CallLogging)
+                install(CallLogging) {
+                    disableDefaultColors()
+                }
 
                 routing {
                     routeMoeTalk()

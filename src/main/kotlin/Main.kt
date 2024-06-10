@@ -18,12 +18,17 @@ import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.core.config.Configurator
+import org.apache.logging.log4j.spi.LoggerContext
 import org.slf4j.LoggerFactory
+import server.MoeTalk
 import server.Server
 import ui.ui
 import kotlin.system.exitProcess
 
-private val logger = LoggerFactory.getLogger("Main")
+val logCtx = Configurator.initialize("MoeTalkDesktop", MoeTalk::class.java.classLoader, "log4j2.xml")
+private val logger by lazy { logCtx.getLogger("Main") }
 
 @Composable
 @Preview
@@ -32,6 +37,7 @@ fun App() {
 }
 
 fun main() = application {
+    logger.info("Starting application")
     Window(onCloseRequest = ::onExit, title = "MoeTalk Desktop") {
         App()
     }

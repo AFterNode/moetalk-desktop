@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "cn.afternode"
-version = "1.0-SNAPSHOT"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
@@ -39,8 +39,10 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Exe)
-            packageName = "MoeTalkLocal"
-            packageVersion = "1.0.0"
+            packageName = "MoeTalkDesktop"
+            packageVersion = project.version as String
+
+            modules("java.management")
 
             windows {
                 console = true

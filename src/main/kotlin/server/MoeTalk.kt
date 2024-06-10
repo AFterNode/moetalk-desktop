@@ -16,6 +16,7 @@
 
 package server
 
+import logCtx
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.slf4j.LoggerFactory
@@ -32,7 +33,7 @@ import kotlin.io.path.createDirectories
 import kotlin.io.path.exists
 
 object MoeTalk {
-    val logger = LoggerFactory.getLogger("Installer")
+    val logger = logCtx.getLogger("Installer")
     val installDir by lazy { File("moe-talk") }
 
     var proxyHost: String? = null
