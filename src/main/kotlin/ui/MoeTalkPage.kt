@@ -17,32 +17,51 @@
 package ui
 
 import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import server.MoeTalk
 import ui.components.checkBox
 import ui.components.intInput
+import ui.components.progress
 import ui.components.textInput
 import java.net.URI
 
 @Composable
 @Preview
 fun moeTalkPage() {
+    var selectedItem by remember { mutableStateOf(0) }
+
+    Column {
+        TabRow(selectedItem) {
+            Tab(
+                selected = selectedItem == 0,
+                text = { Text("HTTP") },
+                onClick = { selectedItem = 0 }
+            )
+            Tab(
+                selected = selectedItem == 1,
+                text = { Text("Git") },
+                onClick = { selectedItem = 1 }
+            )
+        }
+
+        when (selectedItem) {
+            0 -> moeTalkInstallHttp()
+            1 -> moeTalkInstallGit()
+        }
+    }
+}
+
+@Composable
+@Preview
+private fun moeTalkInstallHttp() {
     val snackbar = remember { SnackbarHostState() }
 
     val proxyHost = remember { mutableStateOf("localhost") }
@@ -79,10 +98,10 @@ fun moeTalkPage() {
                             downloadText = "下载中"
                             downloadProgress = 0.0f
 
-                            MoeTalk.install({ bytesRead, contentLength, done ->
+                            MoeTalk.installHttp({ bytesRead, contentLength, done ->
                                 downloadProgress = (bytesRead / contentLength).toFloat()
                             }, {
-                                if (it == MoeTalk.InstallState.COMPLETED) {
+                                if (it == MoeTalk.InstallState.HTTP_COMPLETED) {
                                     downloading = false
                                     launch {
                                         snackbar.showSnackbar("完成")
@@ -114,27 +133,57 @@ fun moeTalkPage() {
         }
 
         if (downloading) {
-            Dialog(
-                onDismissRequest = {  },
-                DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(100.dp)
-                        .background(color = Color.White, shape = RoundedCornerShape(8.dp))
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                        Text(downloadText)
+            progress(downloadText, downloadProgress)
+        }
+    }
+}
 
-                        if (downloadProgress > 0) {
-                            CircularProgressIndicator(downloadProgress)
-                        } else {
-                            CircularProgressIndicator()
+@Composable
+@Preview
+private fun moeTalkInstallGit() {
+    val snackbar = remember { SnackbarHostState() }
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) }
+    ) {
+        var url = remember { mutableStateOf(MoeTalk.gitUrl) }
+
+        var executing by remember { mutableStateOf(false) }
+        var execText by remember { mutableStateOf("") }
+        var execProg by remember { mutableStateOf(-1f) }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            textInput("Git地址", url)
+
+            Button(
+                onClick = {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        MoeTalk.gitUrl = url.value
+
+                        try {
+                            executing = true
+                            MoeTalk.installGit { task, completed, total, done ->
+                                if (done) {
+                                    executing = false
+                                    launch {
+                                        snackbar.showSnackbar("安装完成")
+                                    }
+                                }
+                                execText = "$task ($completed/$total)"
+//                                execProg = progress
+                            }
+                        } catch (t: Throwable) {
+                            executing = false
+                            MoeTalk.logger.error("Unable to install with git", t)
+                            snackbar.showSnackbar("安装失败：${t.message}")
                         }
                     }
-                }
-            }
+                },
+                content = { Text("安装") }
+            )
+        }
+
+        if (executing) {
+            progress(execText, execProg)
         }
     }
 }

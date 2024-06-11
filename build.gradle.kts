@@ -2,6 +2,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     kotlin("jvm")
+
     id("org.jetbrains.compose")
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }
@@ -27,15 +28,21 @@ dependencies {
     runtimeOnly("io.ktor:ktor-server-core:2.3.11")
     implementation("io.ktor:ktor-server-netty:2.3.11")
     implementation("io.ktor:ktor-server-call-logging:2.3.11")
+
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r")
 
     implementation("org.apache.logging.log4j:log4j-core:2.23.1")
     implementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.23.1")
+
+    implementation("com.github.ajalt.mordant:mordant:2.6.0")
+    implementation("com.github.ajalt.mordant:mordant-coroutines:2.6.0")
 }
 
 compose.desktop {
     application {
         mainClass = "MainKt"
+        jvmArgs += listOf("-Djava.net.useSystemProxies")
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Exe)

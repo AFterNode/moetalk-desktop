@@ -16,10 +16,19 @@
 
 package server
 
+import com.github.ajalt.mordant.animation.coroutines.animateInCoroutine
+import com.github.ajalt.mordant.widgets.progress.progressBar
+import com.github.ajalt.mordant.widgets.progress.progressBarLayout
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
 import logCtx
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.slf4j.LoggerFactory
+import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.lib.ProgressMonitor
+import terminal
+import threads
 import utils.Downloader
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -42,7 +51,11 @@ object MoeTalk {
 
     var url: String = "https://mirror.ghproxy.com/https://github.com/ggg555ttt/MoeTalk/archive/refs/heads/main.zip"
 
-    fun install(listener: (bytesRead: Long, contentLength: Long, done: Boolean) -> Unit, stateListener: (InstallState) -> Unit) {
+    var gitUrl: String = "https://ghproxy.org/https://github.com/ggg555ttt/MoeTalk.git"
+    var git: Git? = null
+        private set
+
+    fun installHttp(listener: (bytesRead: Long, contentLength: Long, done: Boolean) -> Unit, stateListener: (InstallState) -> Unit) {
         logger.info("Downloading package: $url")
         val client = Downloader.requestProgress(
             OkHttpClient.Builder().apply {
@@ -57,12 +70,12 @@ object MoeTalk {
             },
             listener
         )
-        stateListener(InstallState.DOWNLOAD)
+        stateListener(InstallState.HTTP_DOWNLOAD)
         val data = client.newCall(Request.Builder().url(url).build()).execute().use {
             it.body!!.bytes()
         }
 
-        stateListener(InstallState.EXTRACT)
+        stateListener(InstallState.HTTP_EXTRACT)
         val path = installDir.toPath()
         if (!path.exists()) path.createDirectories()
         ZipInputStream(ByteArrayInputStream(data)).use {
@@ -81,10 +94,71 @@ object MoeTalk {
             it.closeEntry()
         }
 
-        stateListener(InstallState.COMPLETED)
+        stateListener(InstallState.HTTP_COMPLETED)
+    }
+
+    fun installGit(listener: (task: String, completed: Int, total: Int, done: Boolean) -> Unit) {
+        listener("启动中", 0, 0, false)
+        logger.info("Starting git clone from $gitUrl")
+        val progress = progressBarLayout {
+            progressBar()
+        }.animateInCoroutine(terminal)
+        CoroutineScope(threads.asCoroutineDispatcher()).launch { progress.execute() }
+        git = Git.cloneRepository()
+            .setURI(gitUrl)
+            .setDirectory(installDir)
+            .setProgressMonitor(object: ProgressMonitor {
+                var totWrk = 0
+                var tskTit = ""
+
+                override fun start(totalTasks: Int) {
+                    logger.info("Git开始")
+                    listener("Git开始", 0, 0, false)
+                }
+
+                override fun beginTask(title: String?, totalWork: Int) {
+                    progress.update {
+                        completed = 0
+                        total = totalWork.toLong()
+                    }
+
+                    tskTit = title ?: "未知任务"
+                    totWrk = totalWork
+                    listener(tskTit, 0, totalWork, false)
+                }
+
+                override fun update(comp: Int) {
+                    progress.update {
+                        this.completed = comp.toLong()
+                    }
+                    listener(tskTit, comp, totWrk, false)
+                }
+
+                override fun endTask() {}
+                override fun isCancelled(): Boolean = false
+                override fun showDuration(enabled: Boolean) {}
+
+            })
+            .call()
+        listener("完成", 1, 1, true)
+    }
+
+    fun updateGit(listener: (InstallState) -> Unit) {
+        if (git == null) {
+            logger.info("Opening git repository")
+            git = Git.open(installDir)
+        }
+
+        listener(InstallState.GIT_PULL)
+        logger.info("Starting git pull")
+        git!!
+            .pull()
+            .call()
+        listener(InstallState.GIT_COMPLETED)
     }
 
     enum class InstallState(val text: String) {
-        DOWNLOAD("下载中"), EXTRACT("解压中"), COMPLETED("完成")
+        HTTP_DOWNLOAD("下载中"), HTTP_EXTRACT("解压中"), HTTP_COMPLETED("完成"),
+        GIT_CLONE("执行Git Clone"), GIT_PULL("执行Git Pull"), GIT_COMPLETED("Git完成")
     }
 }
